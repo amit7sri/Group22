@@ -7,97 +7,70 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import group22.android.com.group22.model.Accelo;
+import group22.android.com.group22.model.DBTable;
+
 
 /**
  * Created by amitn on 13-02-2017.
  */
 
 public class DatabaseHandler extends SQLiteOpenHelper {
-    String TAG = "Databaseandler";
+    public static final int DATABASE_VERSION = 1;
+    public static final String DATABASE_NAME = "Group22.db";
 
-    private static final int DATABASE_VERSION = 1;
-
-    // Database Name
-    private static final String DATABASE_NAME = "Group22_XXX";
-
-    // Contacts table name
-    private static final String TABLE_PATIENT = "Name_ID_Age_Sex_XXX";
-
-    // Contacts Table Columns names
-    private static final String TIME_STAMP = "tp";
-    private static final String _X = "x";
-    private static final String _Y = "y";
-    private static final String _Z = "z";
-
-    public DatabaseHandler(Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    public DatabaseHandler(Context ctx) {
+        super(ctx, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String CREATE_PATIENT_TABLE = "CREATE TABLE " + TABLE_PATIENT + "("
-                + TIME_STAMP + " TEXT PRIMARY KEY," + _Y + " REAL,"
-                + _Z + "  REAL," + _X + " REAL" + ")";
+        String CREATE_PATIENT_TABLE ="CREATE TABLE "+DBTable.getTablename()+"( "+
+                DBTable.timestamp+" INTEGER PRIMARY KEY, "+ DBTable.x_values +" REAL, "+
+                DBTable.y_values +" REAL, "+ DBTable.z_values +" REAL);";
         db.execSQL(CREATE_PATIENT_TABLE);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PATIENT);
+        db.execSQL("DROP TABLE IF EXISTS " + DBTable.getTablename());
         // Create tables again
         onCreate(db);
 
     }
 
-    void addToTable(Accelo value) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
+    public void insertDB(SQLiteDatabase db, float[] inputSensorValues) {
         ContentValues values = new ContentValues();
-
-        Log.d(TAG,"Timestamp is "  + value.getTp());
-        Log.d(TAG,"x is  " +  value.getLast_x());
-        Log.d(TAG,"y is  " +  value.getLast_y());
-        Log.d(TAG, "z is  " + value.getLast_z());
-
-
-        values.put(_Y, value.getLast_y());
-        values.put(TIME_STAMP, value.getTp());
-        values.put(_X, value.getLast_x());
-        values.put(_Z, value.getLast_z());
-
-
-        // Inserting Row
-        db.insert(TABLE_PATIENT, null, values);
-        db.close(); // Closing database connection
+        values.put(DBTable.x_values, inputSensorValues[0]);
+        values.put(DBTable.y_values, inputSensorValues[1]);
+        values.put(DBTable.z_values, inputSensorValues[2]);
+        db.insert(DBTable.tablename, null, values);
     }
 
-    Accelo getSingleValue(String timestamp) {
-        SQLiteDatabase db = this.getReadableDatabase();
 
-        Cursor cursor = db.query(TABLE_PATIENT, new String[]{TIME_STAMP,
-                        _X, _Y, _Z}, TABLE_PATIENT + "=?",
-                new String[]{String.valueOf(timestamp)}, null, null, null, null);
-        if (cursor != null)
-            cursor.moveToFirst();
+    public float[][] get10records(SQLiteDatabase db) {
 
-        Accelo value = new Accelo(cursor.getString(0),
-                Float.parseFloat(cursor.getString(1)), Float.parseFloat(cursor.getString(2)), Float.parseFloat(cursor.getString(3)));
-        // return contact
-        return value;
+        Cursor cursor = db.rawQuery("select "+DBTable.x_values+","+DBTable.y_values+","+DBTable.z_values+" from " + DBTable.tablename + " order by timestamp DESC limit 11", null);
+        cursor.moveToFirst();
+        float values[][] = new float[10][3];
+        int i = 0;
+        while (cursor.moveToNext() && i!=10) {
+            values[i][0] = Float.parseFloat(cursor.getString(cursor.getColumnIndex(DBTable.x_values)));
+            values[i][1] = Float.parseFloat(cursor.getString(cursor.getColumnIndex(DBTable.y_values)));
+            values[i][2] = Float.parseFloat(cursor.getString(cursor.getColumnIndex(DBTable.z_values)));
 
+            i++;
+        }
+        return values;
     }
 
-    // Getting All Contacts
     public List<Accelo> getAllValues() {
         List<Accelo> valList = new ArrayList<Accelo>();
         // Select All Query
-        String selectQuery = "SELECT  * FROM " + TABLE_PATIENT;
+        String selectQuery = "SELECT  * FROM " + DBTable.getTablename();
 
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor = db.rawQuery(selectQuery, null);
@@ -107,17 +80,12 @@ public class DatabaseHandler extends SQLiteOpenHelper {
             do {
                 Accelo val = new Accelo();
                 val.setTp(cursor.getString(0));
-                /*val.setLast_x(cursor.getString(1));
-                val.setLast_y(cursor.getString(2));
-                val.setLast_y(cursor.getString(3));*/
 
-                // Adding contact to list
                 valList.add(val);
             } while (cursor.moveToNext());
         }
-
-        // return contact list
         return valList;
     }
-
 }
+
+

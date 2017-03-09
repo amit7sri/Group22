@@ -31,6 +31,7 @@ public class SensorHandler extends Service implements SensorEventListener {
     private Sensor senAccelerometer;
 
     int INTERVAL = 1000000;
+    long oldtimemillis;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -48,7 +49,7 @@ public class SensorHandler extends Service implements SensorEventListener {
         return null;
     }
 
-    private long oldts;
+
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -58,11 +59,18 @@ public class SensorHandler extends Service implements SensorEventListener {
 
 //        Accelo accelo = new Accelo( DateFormat.getDateTimeInstance().format(new Date()), x, y,z);*/
 
-        long newts =  System.currentTimeMillis();
-        if(newts - oldts >=1000) {
+        long currentTimeMillis =  System.currentTimeMillis();
+        if(currentTimeMillis - oldtimemillis >=1000) {
             DatabaseHandler hdb = new DatabaseHandler(this);
-            hdb.addToTable(new Accelo(DateFormat.getDateTimeInstance().format(new Date()), event.values[0], event.values[1], event.values[2]));
-            oldts = newts;
+            SQLiteDatabase db = hdb.getWritableDatabase();
+
+            float[] sensorValues = new float[3];
+            sensorValues[0] = event.values[0];
+            sensorValues[1] = event.values[1];
+            sensorValues[2] = event.values[2];
+
+            hdb.insertDB(db, sensorValues);
+            oldtimemillis = currentTimeMillis;
         }
         Log.d(TAG, "X Y Z values are   " +  x +" " + y +"  " + z);
     }

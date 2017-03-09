@@ -1,13 +1,15 @@
-package com.example.dhire.mcassignment1;
+package group22.android.com.group22.helper;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-
+import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.KeyManagementException;
@@ -20,25 +22,43 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import group22.android.com.group22.GraphActivity;
+
 
 public class UploadAsync extends AsyncTask<Void, Void, Void> {
+    public Context context;
 
-    public MainActivity activity;
-    public UploadAsync(MainActivity a)
-    {
-        this.activity = a;
+    public UploadAsync(Context context) {
+        this.context = context;
     }
-    String upLoadServerUri = "https://impact.asu.edu/CSE535Fall16Folder/UploadToServer.php";
-    
+
+
     int serverResponseCode = 0;
-    String srcFile;
-    ProgressDialog dialog ;
+    final String srcFile = "/data/user/0/group22.android.com.group22/databases/Group22.db";
+    String upLoadServerUri = "https://impact.asu.edu/CSE535Spring17Folder/UploadToServer.php";
+
+    ProgressDialog dialog;
+
+    @Override
+    protected void onPreExecute() {
+        dialog = ProgressDialog.show(context, "Uploading", "Please wait ...", true);
+    }
+
+    @Override
+    protected void onPostExecute(Void result) {
+        dialog.dismiss();
+        Toast.makeText(context, "Upload Successful", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected Void doInBackground(Void... params) {
+        fileUpload();
+        return null;
+    }
+
 
     private void fileUpload() {
-
-    // This code is referred from http://www.coderefer.com/android-upload-file-to-server/
         String fileName = srcFile;
-        //DBHelper dbHelper = new DBHelper(context);
         HttpsURLConnection conn = null;
         DataOutputStream dos = null;
         String lineEnd = "\r\n";
@@ -48,9 +68,9 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
         byte[] buffer;
         int maxBufferSize = 1 * 1024 * 1024;
         File sourceFile = new File(srcFile);
-        //if(bufferCounter>=maxCounter){
 
-        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+
+        TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
             public X509Certificate[] getAcceptedIssuers() {
                 return null;
             }
@@ -64,7 +84,7 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
             public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
                 // Not implemented
             }
-        } };
+        }};
 
         try {
             SSLContext sc = SSLContext.getInstance("TLS");
@@ -79,21 +99,17 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
         }
 
         if (!sourceFile.isFile()) {
-            Log.e("uploadFile", "Source File does not exist :");
+            Log.d("uploadFile", "Source File does not exist :");
 
-        }
-        else
-        {
+        } else {
             try {
-
-                // open a URL connection to the Servlet
                 FileInputStream fileInputStream = new FileInputStream(sourceFile);
                 URL url = new URL(upLoadServerUri);
-                // Open a HTTP  connection to  the URL
+
                 conn = (HttpsURLConnection) url.openConnection();
-                conn.setDoInput(true); // Allow Inputs
-                conn.setDoOutput(true); // Allow Outputs
-                conn.setUseCaches(false); // Don't use a Cached Copy
+                conn.setDoInput(true);
+                conn.setDoOutput(true);
+                conn.setUseCaches(false);
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Connection", "Keep-Alive");
                 conn.setRequestProperty("ENCTYPE", "multipart/form-data");
@@ -101,17 +117,15 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
                 conn.setRequestProperty("uploaded_file", fileName);
                 dos = new DataOutputStream(conn.getOutputStream());
                 dos.writeBytes(twoHyphens + boundary + lineEnd);
-                dos.writeBytes("Content-Disposition: form-data; name=uploaded_file;"+"filename="
-                        + "HealthDB_Group3.db" + lineEnd);
+                dos.writeBytes("Content-Disposition: form-data; name=uploaded_file;" + "filename="
+                        + "Group22.db" + lineEnd);
 
                 dos.writeBytes(lineEnd);
 
-                // create a buffer of  maximum size
                 bytesAvailable = fileInputStream.available();
                 bufferSize = Math.min(bytesAvailable, maxBufferSize);
                 buffer = new byte[bufferSize];
 
-                // read file and write it into form...
                 bytesRead = fileInputStream.read(buffer, 0, bufferSize);
 
                 while (bytesRead > 0) {
@@ -121,19 +135,16 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
                     bytesRead = fileInputStream.read(buffer, 0, bufferSize);
                 }
 
-                // send multipart form data necesssary after file data...
                 dos.writeBytes(lineEnd);
                 dos.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd);
 
-                // Responses from the server (code and message)
-                serverResponseCode = conn.getResponseCode();
-                String serverResponseMessage = conn.getResponseMessage();
 
-                if(serverResponseCode == 200){
+                serverResponseCode = conn.getResponseCode();
+
+                if (serverResponseCode == 200) {
                     Log.d("UploadService", "File Uploaded Successfully");
                 }
 
-                //close the streams //
                 fileInputStream.close();
                 dos.flush();
                 dos.close();
@@ -148,22 +159,4 @@ public class UploadAsync extends AsyncTask<Void, Void, Void> {
             }
         }
     }
-
-    @Override
-    protected void onPreExecute() {
-        dialog = ProgressDialog.show(activity, "Uploading", "Please wait ...", true);
-    }
-    @Override
-    protected void onPostExecute(Void result) {
-        dialog.dismiss();
-    }
-    @Override
-    protected Void doInBackground(Void... params){
-
-        srcFile = "/data/user/0/com.example.dhire.mcassignment1/databases/HealthDB_Group3.db";
-
-        fileUpload();
-        return null;
-    }
-
 }
